@@ -1,4 +1,4 @@
-from sklearn.externals import joblib
+import joblib
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold, cross_validate, cross_val_predict, cross_val_score, train_test_split
@@ -17,7 +17,6 @@ import pandas as pd
 func_map = {
     "feature_topo_compo": get_feature_topo_compo, 
     "feature_add_s_nobin": get_feature_with_s_nobin, 
-    "feature_add_s_nobin_Bar0": get_feature_with_s_nobin_Bar0, 
     "feature_composition": get_feature_composition
 }
 
@@ -101,9 +100,9 @@ def get_id_list(data_dir):
 def batch_handle(id_list):
     for id in id_list:
         get_prim_structure_info(data_dir, id)
-        enlarge_cell(data_dir, id)
-        get_betti_num(data_dir, id)
-        func_map[fname](data_dir, id)
+        cav, cev = enlarge_cell(data_dir, id)
+        all_pair_outs = get_betti_num(data_dir, id, cav, cev)
+        func_map[fname](data_dir, id, cav, cev, all_pair_outs)
 
 
 def split_list(all_id_list):

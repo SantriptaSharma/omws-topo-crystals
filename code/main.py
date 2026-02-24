@@ -12,7 +12,7 @@ def main():
 
     # get feature
     if USE_MULTIPROCESS:
-        pool = Pool(10)
+        pool = Pool(cpus)
         pool.map(batch_handle, split_list(id_list))
     else:
         batch_handle(id_list)

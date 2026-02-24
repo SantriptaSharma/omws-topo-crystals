@@ -1,7 +1,7 @@
 # ASPH-Code
 data and code to reduplicate paper: Topological representations of crystalline compounds for the machine-learning prediction of materials properties
 
-## Requirments
+## Requirements
 - Python verison >= 3.6
 - Ripser version == 0.4.1
 - numpy, pandas

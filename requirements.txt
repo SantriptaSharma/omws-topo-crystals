@@ -1,0 +1,5 @@
+ripser
+numpy
+pandas
+scikit-learn
+tqdm
