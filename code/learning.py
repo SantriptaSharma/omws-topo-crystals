@@ -13,6 +13,8 @@ import time, re, os
 from random import shuffle
 import pandas as pd
 
+from tqdm import tqdm
+
 # map feature to get feature function
 func_map = {
     "feature_topo_compo": get_feature_topo_compo, 
@@ -91,18 +93,34 @@ def get_id_list(data_dir):
     with open(data_dir + '/properties.txt', 'r') as f:
         lines = f.read().splitlines()
     id_list = []
-    for line in lines[1:]:
+
+    for line in tqdm(lines[1:], desc="Getting id list", total=len(lines)-1):
         id = line.split()[0]
         id_list.append(id)
     return id_list
 
 
+from timeit import default_timer as timer
+
 def batch_handle(id_list):
     for id in id_list:
+        print(f"processing id: {id}")
+
+        start = timer()
         get_prim_structure_info(data_dir, id)
+        print(f"get_prim_structure_info: {timer() - start:.4f}s")
+
+        start = timer()
         cav, cev = enlarge_cell(data_dir, id)
+        print(f"enlarge_cell: {timer() - start:.4f}s")
+
+        start = timer()
         all_pair_outs = get_betti_num(data_dir, id, cav, cev)
+        print(f"get_betti_num: {timer() - start:.4f}s")
+
+        start = timer()
         func_map[fname](data_dir, id, cav, cev, all_pair_outs)
+        print(f"{fname}: {timer() - start:.4f}s")
 
 
 def split_list(all_id_list):

@@ -7,6 +7,34 @@ from config import *
 
 import pickle as pkl
 
+from tqdm import tqdm
+
+def atoms_frequency():
+    sub_dict = split_element(data_dir)
+
+    atom_single = {}
+    for sub in tqdm(sub_dict.keys(), desc="Calculating atom frequency", total=len(sub_dict)):
+        for i in sub_dict[sub]:
+            if i not in atom_single:
+                atom_single[i] = 0.0
+            atom_single[i] += 1.0
+    return atom_single
+
+def split_element(data_dir):
+    pattern = re.compile("[A-Z]{1}[a-z]{0,1}")
+    # substance to all pair
+    sub_dict = {}
+
+    with open(data_dir + '/properties.txt', 'r') as f:
+        lines = f.read().splitlines()
+    for line in tqdm(lines, desc="Splitting elements", total=len(lines)):
+        sub = line.split()[0]
+        with open(data_dir + "/structure/" + sub, 'r') as tmp:
+            ls = tmp.read().splitlines()[0]
+        eles = set(pattern.findall(ls))
+        sub_dict[sub] = eles
+    return sub_dict
+
 atom_single = atoms_frequency()
 
 common_pair = {}
@@ -69,7 +97,6 @@ def compute_statistics(arr_raw, arr_weighted):
         return [np.mean(arr_raw), np.std(arr_raw), np.max(arr_raw), np.min(arr_raw), np.sum(arr_weighted)]
 
 def compute_feature_with_s_nobin(pair_bettis, typ_dict):
-    bar_ctypes = [[] for _ in range(3)]
     bar_births = [[] for _ in range(3)]
     bar_deaths = [[] for _ in range(3)]
 
@@ -80,12 +107,10 @@ def compute_feature_with_s_nobin(pair_bettis, typ_dict):
 
     for (ctype, eltype, dgms) in pair_bettis:
         ca_num = typ_dict[ctype]
-        cp_idx = common_pair[ctype.decode()]
+        cp_idx = common_pair.get(ctype, None)
     
-        for i, dgm in enumerate(dgms):
-            dim = i
-            
-            bar_ctypes[dim].extend([ctype] * len(dgm))
+        for dim, dgm in enumerate(dgms):
+
             births = bar_births[dim]
             deaths = bar_deaths[dim]
             Wbirths = bar_births_weighted[dim]
@@ -101,9 +126,37 @@ def compute_feature_with_s_nobin(pair_bettis, typ_dict):
             Wbirths.extend(n_wbirths)
             Wdeaths.extend(n_wdeaths)
 
+            if cp_idx is None:
+                continue
 
+            nbirths = np.array(nbirths)
+            n_wbirths = np.array(n_wbirths)
+            ndeaths = np.array(ndeaths)
+            n_wdeaths = np.array(n_wdeaths)
+            nlifetimes = ndeaths - nbirths
+            n_wlifetimes = n_wdeaths - n_wbirths
 
-    bars_ctypes = [np.array(bar_ctypes[i]) for i in range(3)]
+            valid_nmask = ndeaths != -1
+            valid_nbirths = nbirths[valid_nmask]
+            valid_ndeaths = ndeaths[valid_nmask]
+            valid_nlifetimes = nlifetimes[valid_nmask]
+            valid_n_wbirths = n_wbirths[valid_nmask]
+            valid_n_wdeaths = n_wdeaths[valid_nmask]
+            valid_n_wlifetimes = n_wlifetimes[valid_nmask]
+
+            if dim == 0:
+                Feature_3[cp_idx, 0:5] = np.array(compute_statistics(valid_ndeaths, valid_n_wdeaths))
+            elif dim == 1:
+                Feature_3[cp_idx, 5:10] = np.array(compute_statistics(valid_nlifetimes, valid_n_wlifetimes))
+                Feature_3[cp_idx, 10:15] = np.array(compute_statistics(valid_nbirths, valid_n_wbirths))
+                Feature_3[cp_idx, 15:20] = np.array(compute_statistics(valid_ndeaths, valid_n_wdeaths))
+            elif dim == 2:
+                Feature_3[cp_idx, 20:25] = np.array(compute_statistics(valid_nlifetimes, valid_n_wlifetimes))
+                Feature_3[cp_idx, 25:30] = np.array(compute_statistics(valid_nbirths, valid_n_wbirths))
+                Feature_3[cp_idx, 30:35] = np.array(compute_statistics(valid_ndeaths, valid_n_wdeaths))
+
+    Feature_3 = np.concatenate(Feature_3, axis=0)
+
     bars_births = [np.array(bar_births[i]) for i in range(3)]
     bars_deaths = [np.array(bar_deaths[i]) for i in range(3)]
     bars_births_weighted = [np.array(bar_births_weighted[i]) for i in range(3)]
@@ -128,73 +181,6 @@ def compute_feature_with_s_nobin(pair_bettis, typ_dict):
 
     Feature_2 = np.asarray(Feature_2, float)
 
-
-    for (ctype, eltype, dgms) in pair_bettis:
-        if ctype not in common_pair:
-            continue
-            
-        ca_num = typ_dict[ctype]
-        idx = common_pair[ctype]
-        
-        for dim, dgm in enumerate(dgms):
-            if len(dgm) == 0:
-                continue
-                
-            births = np.array([birth for birth, death in dgm])
-            deaths = np.array([death if death != float('inf') else -1 for birth, death in dgm])
-            valid_mask = deaths != -1
-            valid_deaths = deaths[valid_mask]
-            
-
-
-            if dim == 0 and len(valid_deaths) > 0:
-                Feature_3[idx, 0] = np.mean(valid_deaths)
-                Feature_3[idx, 1] = np.std(valid_deaths)
-                Feature_3[idx, 2] = np.max(valid_deaths)
-                Feature_3[idx, 3] = np.min(valid_deaths)
-                Feature_3[idx, 4] = np.sum(valid_deaths) / ca_num
-                
-            elif dim == 1 and len(valid_deaths) > 0:
-                valid_births = births[valid_mask]
-                lifetimes = valid_deaths - valid_births
-                
-                Feature_3[idx, 5] = np.mean(lifetimes)
-                Feature_3[idx, 6] = np.std(lifetimes)
-                Feature_3[idx, 7] = np.max(lifetimes)
-                Feature_3[idx, 8] = np.min(lifetimes)
-                Feature_3[idx, 9] = np.sum(lifetimes) / ca_num
-                Feature_3[idx, 10] = np.mean(valid_births)
-                Feature_3[idx, 11] = np.std(valid_births)
-                Feature_3[idx, 12] = np.max(valid_births)
-                Feature_3[idx, 13] = np.min(valid_births)
-                Feature_3[idx, 14] = np.sum(valid_births) / ca_num
-                Feature_3[idx, 15] = np.mean(valid_deaths)
-                Feature_3[idx, 16] = np.std(valid_deaths)
-                Feature_3[idx, 17] = np.max(valid_deaths)
-                Feature_3[idx, 18] = np.min(valid_deaths)
-                Feature_3[idx, 19] = np.sum(valid_deaths) / ca_num
-                
-            elif dim == 2 and len(valid_deaths) > 0:
-                valid_births = births[valid_mask]
-                lifetimes = valid_deaths - valid_births
-                
-                Feature_3[idx, 20] = np.mean(lifetimes)
-                Feature_3[idx, 21] = np.std(lifetimes)
-                Feature_3[idx, 22] = np.max(lifetimes)
-                Feature_3[idx, 23] = np.min(lifetimes)
-                Feature_3[idx, 24] = np.sum(lifetimes) / ca_num
-                Feature_3[idx, 25] = np.mean(valid_births)
-                Feature_3[idx, 26] = np.std(valid_births)
-                Feature_3[idx, 27] = np.max(valid_births)
-                Feature_3[idx, 28] = np.min(valid_births)
-                Feature_3[idx, 29] = np.sum(valid_births) / ca_num
-                Feature_3[idx, 30] = np.mean(valid_deaths)
-                Feature_3[idx, 31] = np.std(valid_deaths)
-                Feature_3[idx, 32] = np.max(valid_deaths)
-                Feature_3[idx, 33] = np.min(valid_deaths)
-                Feature_3[idx, 34] = np.sum(valid_deaths) / ca_num
-
-    Feature_3 = np.concatenate(Feature_3, axis=0)
     Feature = np.concatenate((Feature_2, Feature_3), axis=0)
     return Feature
 
@@ -232,29 +218,3 @@ def get_feature_topo_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair
 
     with open(save_path, "wb") as outfile:
         np.save(outfile, Feature)
-
-def atoms_frequency():
-    sub_dict = split_element(data_dir)
-
-    atom_single = {}
-    for sub in sub_dict.keys():
-        for i in sub_dict[sub]:
-            if i not in atom_single:
-                atom_single[i] = 0.0
-            atom_single[i] += 1.0
-    return atom_single
-
-def split_element(data_dir):
-    pattern = re.compile("[A-Z]{1}[a-z]{0,1}")
-    # substance to all pair
-    sub_dict = {}
-
-    with open(data_dir + '/properties.txt', 'r') as f:
-        lines = f.read().splitlines()
-    for line in lines:
-        sub = line.split()[0]
-        with open(data_dir + "/structure/" + sub, 'r') as tmp:
-            ls = tmp.read().splitlines()[0]
-        eles = set(pattern.findall(ls))
-        sub_dict[sub] = eles
-    return sub_dict

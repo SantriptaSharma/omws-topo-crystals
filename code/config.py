@@ -11,4 +11,4 @@ lth = int(np.rint(cut/rs))
 # feature name
 fname = "feature_topo_compo"
 
-USE_MULTIPROCESS = True
+USE_MULTIPROCESS = False
