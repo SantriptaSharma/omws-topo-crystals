@@ -3,3 +3,7 @@ numpy
 pandas
 scikit-learn
 tqdm
+ipykernel
+plotly
+nbformat
+polyscope
