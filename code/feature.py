@@ -21,8 +21,12 @@ def atoms_frequency():
     return atom_single
 
 def split_element(data_dir):
+    if os.path.exists(data_dir + '/sub_dict.pkl'):
+        with open(data_dir + '/sub_dict.pkl', 'rb') as f:
+            sub_dict = pkl.load(f)
+        return sub_dict
+
     pattern = re.compile("[A-Z]{1}[a-z]{0,1}")
-    # substance to all pair
     sub_dict = {}
 
     with open(data_dir + '/properties.txt', 'r') as f:
@@ -33,6 +37,10 @@ def split_element(data_dir):
             ls = tmp.read().splitlines()[0]
         eles = set(pattern.findall(ls))
         sub_dict[sub] = eles
+
+    with open(data_dir + '/sub_dict.pkl', 'wb') as f:
+        pkl.dump(sub_dict, f)
+
     return sub_dict
 
 atom_single = atoms_frequency()

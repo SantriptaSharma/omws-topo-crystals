@@ -3,4 +3,7 @@ betti_num/
 structure/
 element_properties.csv
 properties.txt
+sub_dict.pkl
 feature*/
+predict*.npz
+*.zip

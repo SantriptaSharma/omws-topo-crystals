@@ -12,6 +12,7 @@ import numpy as np
 import time, re, os
 from random import shuffle
 import pandas as pd
+from multiprocessing import Pool
 
 from tqdm import tqdm
 
@@ -32,20 +33,24 @@ def learning_cv(data_dir):
     # normalization
     min_max_scaler = MinMaxScaler()
     X_minmax = min_max_scaler.fit_transform(X)
-    clf = GradientBoostingRegressor(loss='ls', learning_rate=0.001, n_estimators=300000, max_depth=7, min_samples_split=5, subsample=0.85, max_features='sqrt', random_state = 0)
 
-    # scores = cross_validate(clf, X_minmax, y, scoring=['r2', 'neg_mean_squared_error', 'neg_mean_absolute_error'], n_jobs=10, cv=crossvalidation)
-    predicted = cross_val_predict(clf, X_minmax, y, cv=crossvalidation, n_jobs=10)
-    with open(data_dir + '/predict_' + fname + '_cv.npz', 'wb') as out_file:
-        np.savez(out_file, predicted=predicted, y=y)
-    r2 = r2_score(y, predicted)
-    mse = mean_squared_error(y, predicted)
-    rmse = np.sqrt(abs(mse))
-    mae = mean_absolute_error(y, predicted)
+    for n_estimators in n_estimators_arr:
+        start = timer()
+        clf = GradientBoostingRegressor(loss='squared_error', learning_rate=0.001, n_estimators=n_estimators, max_depth=7, min_samples_split=5, subsample=0.85, max_features='sqrt', random_state = 0)
+        # scores = cross_validate(clf, X_minmax, y, scoring=['r2', 'neg_mean_squared_error', 'neg_mean_absolute_error'], n_jobs=10, cv=crossvalidation)
+        predicted = cross_val_predict(clf, X_minmax, y, cv=crossvalidation, n_jobs=10)
+        end = timer()
+        
+        r2 = r2_score(y, predicted)
+        mse = mean_squared_error(y, predicted)
+        rmse = np.sqrt(abs(mse))
+        mae = mean_absolute_error(y, predicted)
 
-    print(fname + ", cv=10, n_estimator=300000, max_depth=7, min_samples_split=5, subsample=0.85 remove >=2.0 data " + str(cut))
+        with open(data_dir + '/predict_' + fname + f'_cv_{n_estimators}.npz', 'wb') as out_file:
+            np.savez(out_file, predicted=predicted, y=y, time=end-start, r2=r2, rmse=rmse, mae=mae)
 
-    print("r2_score: {0}, rmse: {1}, mae: {2}".format(r2, rmse, mae))
+        print(fname + f", cv=10, n_estimator={n_estimators}, max_depth=7, min_samples_split=5, subsample=0.85 remove >=2.0 data " + str(cut))
+        print("r2_score: {0}, rmse: {1}, mae: {2}".format(r2, rmse, mae))
 
 
 def learning_cv_repeated(data_dir, fname, times):
@@ -55,7 +60,7 @@ def learning_cv_repeated(data_dir, fname, times):
     print("get data")
     min_max_scaler = MinMaxScaler()
     X_minmax = min_max_scaler.fit_transform(X)
-    for i in range(times):
+    for i in tqdm(range(times), desc="Learning with repeated cv", total=times):
         clf = GradientBoostingRegressor(loss='ls', learning_rate=0.001, n_estimators=300000, max_depth=7, min_samples_split=5, subsample=0.85, max_features='sqrt', random_state = i)
 
         # scores = cross_validate(clf, X_minmax, y, scoring=['r2', 'neg_mean_squared_error', 'neg_mean_absolute_error'], n_jobs=10, cv=crossvalidation)
@@ -71,21 +76,49 @@ def learning_cv_repeated(data_dir, fname, times):
         print("times: " + str(i))
         print("r2_score: {0}, rmse: {1}, mae: {2}".format(r2, rmse, mae))
 
+def _load_single_feature(args):
+    """Helper function to load a single feature file."""
+    idx, id, delta_e, data_dir, fname = args
+    feature_path = data_dir + '/' + fname + '/' + id + '_feature.npy'
+    with open(feature_path, 'rb') as fe:
+        feature = np.load(fe)
+    return idx, feature, delta_e
+
 def get_data_X_y(data_dir, fname):
     with open(data_dir + '/properties.txt', 'r') as f:
-        lines = f.read().splitlines()
-    X = []; y = []
-    for line in lines:
+        lines = f.read().splitlines()[1:]  # Skip first datapoint, since it seems to be doing that elsewhere
+    
+    n_samples = len(lines)
+    
+    first_id = lines[0].split()[0]
+    first_feature_path = data_dir + '/' + fname + '/' + first_id + '_feature.npy'
+    with open(first_feature_path, 'rb') as fe:
+        first_feature = np.load(fe)
+    feature_dim = first_feature.shape[0]
+    
+    # Prepare output arrays
+    X = np.zeros((n_samples, feature_dim), dtype=float)
+    y = np.zeros(n_samples, dtype=float)
+    
+    # Prepare arguments for parallel loading
+    load_args = []
+    for idx, line in tqdm(enumerate(lines), desc="Preparing load arguments", total=n_samples):
         id, delta_e = line.split()[0], line.split()[1]
-        with open(data_dir + '/' + fname + '/' + id + '_feature.npy', 'rb') as fe:
-            feature = np.load(fe)
-
-        X.append(feature)
-        y.append(delta_e)
-
-    X = np.asarray(X)
-    y = np.asarray(y, float)
-    # print(X.shape, y.shape)
+        load_args.append((idx, id, delta_e, data_dir, fname))
+    
+    # Load features in parallel
+    with Pool(cpus) as pool:
+        results = list(tqdm(
+            pool.imap(_load_single_feature, load_args),
+            desc="Loading features",
+            total=n_samples
+        ))
+    
+    # Place results in correct positions
+    for idx, feature, delta_e in tqdm(results, desc="Placing results", total=n_samples):
+        X[idx] = feature
+        y[idx] = float(delta_e)
+    
     return X, y
 
 
