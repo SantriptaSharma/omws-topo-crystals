@@ -8,7 +8,7 @@ from feature import element_properties
 
 from gudhi import AlphaComplex
 
-et = element_properties["Abbr"].to_numpy(dtype="S2")
+et = element_properties.index.to_numpy(dtype="S2")
 er = element_properties["CovalentRadius"].to_numpy()
 
 # poscar to numpy array
@@ -145,7 +145,7 @@ def get_betti_whole_lattice(data_dir, id, cav, cev):
             whole_lattice_out = pkl.load(phfile)
             return whole_lattice_out
 
-    points = cev[:]['pos'][:]
+    points = cev['pos'][:]
     dgms = ripser(points, maxdim=2, thresh=cut)['dgms']
 
     with open(save_path, 'wb') as out_file:
@@ -160,10 +160,8 @@ def get_betti_weighted_alpha(data_dir, id, cav, cev):
             walpha_out = pkl.load(phfile)
             return walpha_out
 
-    ets = np.repeat(et[None, :], len(cev), axis=0)
-
-    points = cev[:]['pos'][:]
-    weights = er[np.where(cev[:]['typ'][None, :] == ets)[1]]
+    points = cev['pos'][:]
+    weights = er[np.where(cev['typ'][:, None] == et[None, :])[1]]
 
     assert points.shape[0] == weights.shape[0] and points.shape[1] == 3
 
