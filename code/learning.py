@@ -19,6 +19,7 @@ from tqdm import tqdm
 # map feature to get feature function
 func_map = {
     "feature_topo_compo": get_feature_topo_compo, 
+    "feature_whole_compo": get_feature_whole_compo,
     "feature_add_s_nobin": get_feature_with_s_nobin, 
     "feature_composition": get_feature_composition
 }
@@ -140,7 +141,8 @@ def batch_handle(id_list):
         get_prim_structure_info(data_dir, id)
         cav, cev = enlarge_cell(data_dir, id)
         all_pair_outs = get_betti_num(data_dir, id, cav, cev)
-        func_map[fname](data_dir, id, cav, cev, all_pair_outs)
+        whole_bettis_out = get_betti_whole_lattice(data_dir, id, cav, cev)
+        func_map[fname](data_dir, id, cav, cev, all_pair_outs, whole_bettis_out)
 
 
 def split_list(all_id_list):

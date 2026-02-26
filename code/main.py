@@ -24,7 +24,8 @@ def main():
         
         print(f"Joined in {end - start} seconds")
  
-    learning_cv(data_dir)
+    if not SKIP_LEARNING:
+        learning_cv(data_dir)
 
 if __name__ == '__main__':
     main()

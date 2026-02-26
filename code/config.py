@@ -12,6 +12,7 @@ lth = int(np.rint(cut/rs))
 fname = "feature_topo_compo"
 
 USE_MULTIPROCESS = True
-SKIP_FEATURE = True
+SKIP_FEATURE = False
+SKIP_LEARNING = True
 
 n_estimators_arr = [500, 5000]

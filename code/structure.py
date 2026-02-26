@@ -4,6 +4,8 @@ from config import *
 from ripser import Rips, ripser
 import pickle as pkl
 
+from feature import element_properties
+
 # poscar to numpy array
 def get_prim_structure_info(data_dir, id):
     save_path = data_dir + '/atoms/' + id + '_original.npz'
@@ -145,3 +147,7 @@ def get_betti_whole_lattice(data_dir, id, cav, cev):
         pkl.dump(dgms, out_file)
 
     return dgms
+
+
+def get_betti_weighted_alpha(data_dir, id, cav, cev):
+    pass
