@@ -145,4 +145,5 @@ for id in id_list:
     (all_pair_outs, feature_vec) = get_betti_num_vec(data_dir, id, cav, cev)
     # print(feature_vec)
 
+# TO DO: How will the model take the betti curves and use them? Rewrite code for that
 
