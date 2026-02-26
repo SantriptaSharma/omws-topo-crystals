@@ -6,7 +6,7 @@ import pickle as pkl
 
 from feature import element_properties
 
-from gudhi.alpha_complex import AlphaComplex
+from gudhi import AlphaComplex
 
 et = element_properties["Abbr"].to_numpy(dtype="S2")
 er = element_properties["CovalentRadius"].to_numpy()
