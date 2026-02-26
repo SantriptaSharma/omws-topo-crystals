@@ -6,6 +6,11 @@ import pickle as pkl
 
 from feature import element_properties
 
+from gudhi.alpha_complex import AlphaComplex
+
+et = element_properties["Abbr"].to_numpy(dtype="S2")
+er = element_properties["CovalentRadius"].to_numpy()
+
 # poscar to numpy array
 def get_prim_structure_info(data_dir, id):
     save_path = data_dir + '/atoms/' + id + '_original.npz'
@@ -148,6 +153,28 @@ def get_betti_whole_lattice(data_dir, id, cav, cev):
 
     return dgms
 
-
 def get_betti_weighted_alpha(data_dir, id, cav, cev):
-    pass
+    save_path = data_dir + '/betti_num/' + id + "_walpha.pkl"
+    if os.path.exists(save_path):
+        with open(save_path, 'rb') as phfile:
+            walpha_out = pkl.load(phfile)
+            return walpha_out
+
+    ets = np.repeat(et[None, :], len(cev), axis=0)
+
+    points = cev[:]['pos'][:]
+    weights = er[np.where(cev[:]['typ'][None, :] == ets)[1]]
+
+    assert points.shape[0] == weights.shape[0] and points.shape[1] == 3
+
+    st = AlphaComplex(points=points, weights=weights).create_simplex_tree()
+    bars_non_graded = st.persistence(homology_coeff_field=2, persistence_dim_max=True)
+
+    bars = [[] for _ in range(3)]
+    for dim, (birth, death) in bars_non_graded:
+        bars[dim].append((birth, death))
+
+    with open(save_path, 'wb') as out_file:
+        pkl.dump(bars, out_file)
+
+    return bars
