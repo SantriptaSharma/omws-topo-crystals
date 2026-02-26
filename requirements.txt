@@ -7,3 +7,4 @@ ipykernel
 plotly
 nbformat
 polyscope
+gudhi
