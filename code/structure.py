@@ -130,3 +130,18 @@ def get_betti_num(data_dir, id, center_atom_vec, cart_enlarge_vec):
         pkl.dump(all_pair_outs, out_file)
 
     return all_pair_outs
+
+def get_betti_whole_lattice(data_dir, id, cav, cev):
+    save_path = data_dir + '/betti_num/' + id + "_whole.pkl"
+    if os.path.exists(save_path):
+        with open(save_path, 'rb') as phfile:
+            whole_lattice_out = pkl.load(phfile)
+            return whole_lattice_out
+
+    points = cev[:]['pos'][:]
+    dgms = ripser(points, maxdim=2, thresh=cut)['dgms']
+
+    with open(save_path, 'wb') as out_file:
+        pkl.dump(dgms, out_file)
+
+    return dgms
