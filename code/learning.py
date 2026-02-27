@@ -142,7 +142,8 @@ def batch_handle(id_list):
         cav, cev = enlarge_cell(data_dir, id)
         all_pair_outs = get_betti_num(data_dir, id, cav, cev)
         whole_bettis_out = get_betti_whole_lattice(data_dir, id, cav, cev)
-        func_map[fname](data_dir, id, cav, cev, all_pair_outs, whole_bettis_out)
+        weighted_bettis_out = get_betti_weighted_alpha(data_dir, id, cav, cev)
+        func_map[fname](data_dir, id, cav, cev, all_pair_outs, whole_bettis_out, weighted_bettis_out)
 
 
 def split_list(all_id_list):

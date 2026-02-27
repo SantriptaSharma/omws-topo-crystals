@@ -83,7 +83,7 @@ def compute_feature_composition(typ_dict):
     Feature_1 = np.concatenate(Feature_1, axis=0)
     return Feature_1
 
-def get_feature_composition(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis):
+def get_feature_composition(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, alpha_bettis):
     save_path = data_dir + '/feature_composition/' + id + '_feature.npy'
     if os.path.exists(save_path):
         return
@@ -192,7 +192,7 @@ def compute_feature_with_s_nobin(pair_bettis, typ_dict):
     Feature = np.concatenate((Feature_2, Feature_3), axis=0)
     return Feature
 
-def get_feature_with_s_nobin(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis):
+def get_feature_with_s_nobin(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, alpha_bettis):
     save_path = data_dir + '/feature_add_s_nobin/' + id + '_feature.npy'
     if os.path.exists(save_path):
         return
@@ -213,7 +213,7 @@ def compute_feature_topo_compo(center_atom_vec, cart_enlarge_vec, pair_bettis):
     Feature = np.concatenate((feature_compo, feature_topo), axis=0)
     return Feature
 
-def get_feature_topo_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis):
+def get_feature_topo_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, alpha_bettis):
     name = id + "_feature.npy"
     save_path = data_dir + "/feature_topo_compo/" + name
     if os.path.exists(save_path):
@@ -265,7 +265,7 @@ def compute_feature_whole(center_atom_vec, cart_enlarge_vec, pair_bettis, whole_
 
     return np.asarray(Feature_vec, dtype=float)
 
-def get_feature_whole_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis):
+def get_feature_whole_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, alpha_bettis):
     name = id + "_feature.npy"
     save_path = data_dir + "/feature_whole_compo/" + name
     if os.path.exists(save_path):
