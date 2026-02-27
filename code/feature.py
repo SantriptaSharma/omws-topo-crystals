@@ -4,7 +4,7 @@ import os
 import math
 import re
 from config import *
-
+from gudhi.representations import BettiCurve
 import pickle as pkl
 
 from tqdm import tqdm
@@ -228,56 +228,60 @@ def get_feature_topo_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair
         np.save(outfile, Feature)
 
 
-def compute_feature_whole(center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis):
+def compute_feature_whole_betticurve(center_atom_vec, cart_enlarge_vec, pair_bettis,whole_bettis, BETTI_CURVE_SAMPLES=BETTI_CURVE_SAMPLES):
     """
-    Convert precomputed whole-lattice persistence diagrams
-    into a 35-dimensional statistical feature vector.Uses existing compute_statistics() for consistency.
+    Compute whole-lattice Betti curve features.
+
+    Parameters
+    ----------
+    whole_bettis : list
+        Persistence diagrams [dgm0, dgm1, dgm2]
+
+    BETTI_CURVE_SAMPLES : int
+        Number of time samples
+
+    Returns
+    -------
+    feature_vector : np.ndarray
+        Shape (3 * BETTI_CURVE_SAMPLES,)
     """
-    Feature_vec = []
 
-    # Betti-0
-    dgm0 = whole_bettis[0]
-    deaths0 = np.array([death for birth, death in dgm0 if death != float('inf')])
-    Feature_vec.extend(compute_statistics(deaths0, deaths0))
+    feature_blocks = []
 
-    # Betti-1 and Betti-2
-    for dim in [1, 2]:
+    # Use fixed filtration range [0, cut]
+    bc = BettiCurve(n_bins=BETTI_CURVE_SAMPLES,sample_range=[0.0, cut])
 
+    for dim in range(3):
         dgm = whole_bettis[dim]
-        births = []
-        deaths = []
-        lifetimes = []
+        
+        if len(dgm) == 0:
+            feature_blocks.append(np.zeros(BETTI_CURVE_SAMPLES))
+            continue
 
-        for birth, death in dgm:
-            if death == float('inf'):
-                continue
-            births.append(birth)
-            deaths.append(death)
-            lifetimes.append(death - birth)
+        # Remove infinite deaths
+        cleaned = np.array([[birth, death] for birth, death in dgm if death != float('inf')])
+        if len(cleaned) == 0:
+            feature_blocks.append(np.zeros(BETTI_CURVE_SAMPLES))
+            continue
 
-        births = np.array(births)
-        deaths = np.array(deaths)
-        lifetimes = np.array(lifetimes)
+        # GUDHI expects list of diagrams
+        curve = bc.fit_transform([cleaned])[0]
+        feature_blocks.append(curve)
+    feature_vector = np.concatenate(feature_blocks)
+    return feature_vector.astype(float)
 
-        Feature_vec.extend(compute_statistics(lifetimes, lifetimes))
-        Feature_vec.extend(compute_statistics(births, births))
-        Feature_vec.extend(compute_statistics(deaths, deaths))
-
-    return np.asarray(Feature_vec, dtype=float)
-
-def get_feature_whole_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, alpha_bettis):
+def get_feature_whole_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, alpha_bettis=None):
     name = id + "_feature.npy"
     save_path = data_dir + "/feature_whole_compo/" + name
-    if os.path.exists(save_path):
-        return
+    if os.path.exists(save_path): return
 
     typ_dict = get_typ_dict(center_atom_vec)
     feature_compo = compute_feature_composition(typ_dict)
-    feature_whole = compute_feature_whole(center_atom_vec, cart_enlarge_vec, pair_bettis)
-    Feature = np.concatenate((feature_compo, feature_whole), axis=0)
+    feature_whole = compute_feature_whole_betticurve(center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, BETTI_CURVE_SAMPLES=100)
+    Feature_vec = np.concatenate((feature_compo, feature_whole), axis=0)
 
     if not os.path.exists(data_dir + "/feature_whole_compo"):
         os.makedirs(data_dir + "/feature_whole_compo", exist_ok=True)
 
     with open(save_path, "wb") as outfile:
-        np.save(outfile, Feature)
+        np.save(outfile, Feature_vec)
