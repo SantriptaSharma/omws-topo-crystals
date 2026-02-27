@@ -228,8 +228,42 @@ def get_feature_topo_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair
         np.save(outfile, Feature)
 
 
-def compute_feature_whole(center_atom_vec, cart_enlarge_vec, pair_bettis):
-    pass
+def compute_feature_whole(center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis):
+    """
+    Convert precomputed whole-lattice persistence diagrams
+    into a 35-dimensional statistical feature vector.Uses existing compute_statistics() for consistency.
+    """
+    Feature_vec = []
+
+    # Betti-0
+    dgm0 = whole_bettis[0]
+    deaths0 = np.array([death for birth, death in dgm0 if death != float('inf')])
+    Feature_vec.extend(compute_statistics(deaths0, deaths0))
+
+    # Betti-1 and Betti-2
+    for dim in [1, 2]:
+
+        dgm = whole_bettis[dim]
+        births = []
+        deaths = []
+        lifetimes = []
+
+        for birth, death in dgm:
+            if death == float('inf'):
+                continue
+            births.append(birth)
+            deaths.append(death)
+            lifetimes.append(death - birth)
+
+        births = np.array(births)
+        deaths = np.array(deaths)
+        lifetimes = np.array(lifetimes)
+
+        Feature_vec.extend(compute_statistics(lifetimes, lifetimes))
+        Feature_vec.extend(compute_statistics(births, births))
+        Feature_vec.extend(compute_statistics(deaths, deaths))
+
+    return np.asarray(Feature_vec, dtype=float)
 
 def get_feature_whole_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis):
     name = id + "_feature.npy"
