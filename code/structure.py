@@ -1,3 +1,4 @@
+import logging
 import os
 import numpy as np
 from config import *
@@ -146,6 +147,7 @@ def get_betti_whole_lattice(data_dir, id, cav, cev):
             return whole_lattice_out
 
     points = cev['pos'][:]
+    logging.info(f"Computing whole lattice Betti numbers for {id} with {points.shape[0]} points.")
     dgms = ripser(points, maxdim=2, thresh=cut)['dgms']
 
     with open(save_path, 'wb') as out_file:
@@ -165,6 +167,7 @@ def get_betti_weighted_alpha(data_dir, id, cav, cev):
 
     assert points.shape[0] == weights.shape[0] and points.shape[1] == 3
 
+    logging.info(f"Computing weighted alpha Betti numbers for {id} with {points.shape[0]} points.")
     st = AlphaComplex(points=points, weights=weights).create_simplex_tree()
     bars_non_graded = st.persistence(homology_coeff_field=2, persistence_dim_max=True)
 

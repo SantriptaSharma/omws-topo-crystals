@@ -17,14 +17,16 @@ def main():
         start = timer()
         if USE_MULTIPROCESS:
             pool = Pool(cpus)
-            pool.map(batch_handle, split_list(id_list))
+            args = [(i, id_list[i::cpus]) for i in range(cpus)]
+            pool.starmap(batch_handle, args)
         else:
-            batch_handle(id_list)
+            batch_handle(0, id_list)
         end = timer()
         
         print(f"Joined in {end - start} seconds")
  
     if not SKIP_LEARNING:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename=f"worker_logs/learning.log", filemode='a')
         learning_cv(data_dir)
 
 if __name__ == '__main__':

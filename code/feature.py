@@ -228,13 +228,13 @@ def get_feature_topo_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair
         np.save(outfile, Feature)
 
 
-def compute_feature_whole_betticurve(center_atom_vec, cart_enlarge_vec, pair_bettis,whole_bettis, BETTI_CURVE_SAMPLES=BETTI_CURVE_SAMPLES):
+def compute_feature_alpha_betti(center_atom_vec, cart_enlarge_vec, pair_bettis, alpha_bettis, BETTI_CURVE_SAMPLES=BETTI_CURVE_SAMPLES):
     """
-    Compute whole-lattice Betti curve features.
+    Compute alpha-lattice Betti curve features.
 
     Parameters
     ----------
-    whole_bettis : list
+    alpha_bettis : list
         Persistence diagrams [dgm0, dgm1, dgm2]
 
     BETTI_CURVE_SAMPLES : int
@@ -245,43 +245,31 @@ def compute_feature_whole_betticurve(center_atom_vec, cart_enlarge_vec, pair_bet
     feature_vector : np.ndarray
         Shape (3 * BETTI_CURVE_SAMPLES,)
     """
+    
+    bc = BettiCurve(resolution=BETTI_CURVE_SAMPLES)
+    
+    cleaned = [np.array([(birth, death) for birth, death in dgm if death != float('inf') and birth <= cut and death <= cut]) for dgm in alpha_bettis]
+    
+    curves = bc.fit_transform(cleaned)
+    feature_vector = np.concatenate(curves)
 
-    feature_blocks = []
+    assert feature_vector.shape == (3 * BETTI_CURVE_SAMPLES,), f"Expected feature vector of shape {(3 * BETTI_CURVE_SAMPLES,)}, got {feature_vector.shape}"
 
-    # Use fixed filtration range [0, cut]
-    bc = BettiCurve(n_bins=BETTI_CURVE_SAMPLES,sample_range=[0.0, cut])
-
-    for dim in range(3):
-        dgm = whole_bettis[dim]
-        
-        if len(dgm) == 0:
-            feature_blocks.append(np.zeros(BETTI_CURVE_SAMPLES))
-            continue
-
-        # Remove infinite deaths
-        cleaned = np.array([[birth, death] for birth, death in dgm if death != float('inf')])
-        if len(cleaned) == 0:
-            feature_blocks.append(np.zeros(BETTI_CURVE_SAMPLES))
-            continue
-
-        # GUDHI expects list of diagrams
-        curve = bc.fit_transform([cleaned])[0]
-        feature_blocks.append(curve)
-    feature_vector = np.concatenate(feature_blocks)
     return feature_vector.astype(float)
 
-def get_feature_whole_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, alpha_bettis=None):
+def get_feature_alpha_compo(data_dir, id, center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, alpha_bettis):
     name = id + "_feature.npy"
-    save_path = data_dir + "/feature_whole_compo/" + name
-    if os.path.exists(save_path): return
+    save_path = data_dir + f"/feature_alpha_compo_{BETTI_CURVE_SAMPLES}/" + name
+    if os.path.exists(save_path): 
+        return
 
     typ_dict = get_typ_dict(center_atom_vec)
     feature_compo = compute_feature_composition(typ_dict)
-    feature_whole = compute_feature_whole_betticurve(center_atom_vec, cart_enlarge_vec, pair_bettis, whole_bettis, BETTI_CURVE_SAMPLES=100)
-    Feature_vec = np.concatenate((feature_compo, feature_whole), axis=0)
+    feature_alpha = compute_feature_alpha_betti(center_atom_vec, cart_enlarge_vec, pair_bettis, alpha_bettis, BETTI_CURVE_SAMPLES=BETTI_CURVE_SAMPLES)
+    Feature_vec = np.concatenate((feature_compo, feature_alpha), axis=0)
 
-    if not os.path.exists(data_dir + "/feature_whole_compo"):
-        os.makedirs(data_dir + "/feature_whole_compo", exist_ok=True)
+    if not os.path.exists(os.path.dirname(save_path)):
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
     with open(save_path, "wb") as outfile:
         np.save(outfile, Feature_vec)
